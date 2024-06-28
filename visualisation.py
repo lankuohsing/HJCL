@@ -226,7 +226,7 @@ if __name__ == '__main__':
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
     model = MInterface.load_from_checkpoint(checkpoint_model_path)
-    data_module = DInterface(args=args, tokenizer=tokenizer, label_depths=depths, device=device, data_path=data_path, label_dict=label_dict)
+    data_module = DInterface(args=args, tokenizer=tokenizer, label_depths=depths, device=device, data_path=data_path, id_to_label=label_dict)
 
     data_module.setup('test')
     test_loader = data_module.test_dataloader()

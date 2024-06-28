@@ -254,12 +254,12 @@ class GraphLayer(nn.Module):
 
 
 class GraphEncoder(nn.Module):
-    def __init__(self, config, graph=False, layer=1, data_path=None, threshold=0.01, tau=1, label_dict=None):
+    def __init__(self, config, graph=False, layer=1, data_path=None, threshold=0.01, tau=1, label_dict=None, model_name_or_path='bert-base-uncased'):
         super(GraphEncoder, self).__init__()
         self.config = config
         self.tau = tau
         # Intialise the graph nodes with the name embeddings
-        self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
 
         if 'rcv' in data_path:
             with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:

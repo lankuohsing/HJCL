@@ -414,9 +414,9 @@ class HierarchicalBatchSampler(Sampler):
 
         
 class DInterface(pl.LightningDataModule):
-    def __init__(self, args, tokenizer, label_depths, data_path, device, label_dict, positive_threshold: int = 5,
-        hard_negative_threshold: int = 10,
-        easy_negative_threshold: int = 30):
+    def __init__(self, args, tokenizer, label_depths, data_path, device, id_to_label, positive_threshold: int = 5,
+                 hard_negative_threshold: int = 10,
+                 easy_negative_threshold: int = 30):
         super().__init__()
         self.args = args
         self.tokenizer = tokenizer
@@ -430,7 +430,7 @@ class DInterface(pl.LightningDataModule):
         # if 'bgc' in data_path:
         #     self.label_dict = label_dict
         # else:
-        self.label_dict = {v: k for k, v in label_dict.items()}
+        self.id_to_label = {v: k for k, v in id_to_label.items()}
 
     def setup(self, stage=None):
         # Load data
@@ -447,7 +447,7 @@ class DInterface(pl.LightningDataModule):
             else:
                 test_data_path = os.path.join(self.data_path, 'rcv1_test.json')
 
-            label_dict = self.label_dict
+            label_dict = self.id_to_label
             self.train_dataset = BertDataset_rcv(data_path=train_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
             self.dev_dataset = BertDataset_rcv(data_path=val_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
             self.test_dataset = BertDataset_rcv(data_path=test_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, is_test=self.args.test_only, label_path=self.args.label_path)
@@ -457,7 +457,7 @@ class DInterface(pl.LightningDataModule):
             val_data_path = os.path.join(self.data_path, 'dev_data.jsonl')
             test_data_path = os.path.join(self.data_path, 'test_data.jsonl')
 
-            label_dict = self.label_dict
+            label_dict = self.id_to_label
             self.train_dataset = BertDataset_rcv(data_path=train_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
             self.dev_dataset = BertDataset_rcv(data_path=val_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
             self.test_dataset = BertDataset_rcv(data_path=test_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
@@ -467,7 +467,7 @@ class DInterface(pl.LightningDataModule):
             val_data_path = os.path.join(self.data_path, 'valid.jsonl')
             test_data_path = os.path.join(self.data_path, 'test.jsonl')
 
-            label_dict = self.label_dict
+            label_dict = self.id_to_label
             self.train_dataset = BertDataset_rcv(data_path=train_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
             self.dev_dataset = BertDataset_rcv(data_path=val_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
             self.test_dataset = BertDataset_rcv(data_path=test_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
@@ -477,7 +477,7 @@ class DInterface(pl.LightningDataModule):
             val_data_path = os.path.join(self.data_path, 'val.jsonl')
             test_data_path = os.path.join(self.data_path, 'test.jsonl')
 
-            label_dict = self.label_dict
+            label_dict = self.id_to_label
             self.train_dataset = BertDataset_rcv(data_path=train_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
             self.dev_dataset = BertDataset_rcv(data_path=val_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
             self.test_dataset = BertDataset_rcv(data_path=test_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
@@ -488,7 +488,7 @@ class DInterface(pl.LightningDataModule):
             val_data_path = os.path.join(self.data_path, 'wos_val.json')
             test_data_path = os.path.join(self.data_path, 'wos_test.json')
 
-            label_dict = self.label_dict
+            label_dict = self.id_to_label
             self.train_dataset = BertDataset_rcv(data_path=train_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
             self.dev_dataset = BertDataset_rcv(data_path=val_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
             self.test_dataset = BertDataset_rcv(data_path=test_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
@@ -501,7 +501,7 @@ class DInterface(pl.LightningDataModule):
             # with open('./data/nyt/new_label_dict.pkl', 'rb') as f:
             #     label_dict = pickle.load(f)
             # label_dict = {v : k for k, v in label_dict.items()}
-            label_dict = self.label_dict
+            label_dict = self.id_to_label
             self.train_dataset = BertDataset_rcv(data_path=train_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
             self.dev_dataset = BertDataset_rcv(data_path=val_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)
             self.test_dataset = BertDataset_rcv(data_path=test_data_path, device=self.device, pad_idx=self.tokenizer.pad_token_id, label_dict=label_dict, label_path=self.args.label_path)

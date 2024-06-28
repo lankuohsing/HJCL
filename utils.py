@@ -16,41 +16,41 @@ def seed_torch(seed=1029):
 # seed_torch(3)
 # print('Set seed to 3.')
 
-def get_hierarchy_info(label_cpt):
+def get_hierarchy_info(label_file):
     """
-    :param label_cpt: the path of the label_cpt file
-    :return: hiera: Dict{str -> Set[str]}, the parent-child relationship of labels
-    :return: _label_dict: Dict{str -> int}, the label to id mapping
-    :return: r_hiera: Dict{str -> str}, the child-parent relationship of labels
+    :param label_file: the path of the label_cpt file
+    :return: parent_to_children: Dict{str -> Set[str]}, the parent-child relationship of labels
+    :return: label_to_id: Dict{str -> int}, the label to id mapping
+    :return: child_to_parent: Dict{str -> str}, the child-parent relationship of labels
     :return: label_depth: Dict{str -> int}, the depth of each label
     """
-    hiera = defaultdict(set)
-    _label_dict = {}
-    with open(label_cpt) as f:
-        _label_dict['Root'] = -1
+    parent_to_children = defaultdict(set)
+    label_to_id = {}
+    with open(label_file) as f:
+        label_to_id['Root'] = -1
         for line in f.readlines():
             line = line.strip().split('\t')
             for i in line[1:]:
-                if i not in _label_dict:
-                    _label_dict[i] = len(_label_dict) - 1
-                hiera[line[0]].add(i)
-        _label_dict.pop('Root')
-    r_hiera = {}
-    for i in hiera:
-        for j in list(hiera[i]):
-            r_hiera[j] = i
+                if i not in label_to_id:
+                    label_to_id[i] = len(label_to_id) - 1
+                parent_to_children[line[0]].add(i)
+        label_to_id.pop('Root')
+    child_to_parent = {}
+    for i in parent_to_children:
+        for j in list(parent_to_children[i]):
+            child_to_parent[j] = i
 
-    def _loop(a):
-        if r_hiera[a] != 'Root':
-            return [a,] + _loop(r_hiera[a])
+    def get_ancestors(label):
+        if child_to_parent[label] != 'Root':
+            return [label, ] + get_ancestors(child_to_parent[label])
         else:
-            return [a]
+            return [label]
 
     label_depth = {}
-    for i in _label_dict:
-        label_depth[i] = len(_loop(i))
+    for label in label_to_id:
+        label_depth[label] = len(get_ancestors(label))
     
-    return hiera, _label_dict, r_hiera, label_depth
+    return parent_to_children, label_to_id, child_to_parent, label_depth
 
 def save_results(pred, gold, scores, label_dict, dev_input, epoch, path, threshold=0.5, top_k=None):
     macro_f1 = scores['macro_f1']

@@ -475,10 +475,10 @@ class ContrastModel(BertPreTrainedModel):
     def __init__(self, config, batch_size=1, cls_loss=True, contrast_loss=True, contrast_mode='label_aware', graph=False, layer=1, data_path=None,
                  multi_label=False, lamb=1, lamb_1=0.1, threshold=0.01, tau=1, device="cuda", head=4, label_cpt=None, label_depths=None, label_dict=None, label_aware_embedding=None,
                  is_decoder=False, softmax_entropy=False, add_reg=True, add_count=False, count_weight=0, do_simple_label_contrastive=False, do_weighted_label_contrastive=False,
-                 new_label_dict=None, add_path_reg=False, path_reg_weight=0, path_reg_weight_adjusted=False, ignore_path_reg=False, hamming_dist_mode=None):
+                 new_label_dict=None, add_path_reg=False, path_reg_weight=0, path_reg_weight_adjusted=False, ignore_path_reg=False, hamming_dist_mode=None,model_name_or_path='bert-base-uncased'):
         super(ContrastModel, self).__init__(config)
         self.num_labels = config.num_labels
-        self.tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+        self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.is_decoder = is_decoder
         self.softmax_entropy = softmax_entropy

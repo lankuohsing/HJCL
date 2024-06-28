@@ -1,4 +1,4 @@
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, AutoModel
 from fairseq.data import data_utils
 import torch
 from tqdm import tqdm
@@ -21,7 +21,54 @@ from model.text_attention import generate
 from utils import get_hierarchy_info, save_results
 import pickle
 torch.set_float32_matmul_precision("high")
+'''
+CUDA_VISIBLE_DEVICES=0 python train.py \
+  --data bgc --batch 80 --name $NAME \
+  --update 1 --layer 4 --eval_step 1000 \
+  --warmup 5 --tau 0.1 \
+  --label_cpt ./data/bgc/bgc.taxonomy \
+  --lr 1e-5 \
+  --lamb 0.1 \
+  --head 4 \
+  --contrast 1 \
+  --max_epoch 500 \
+  --contrast_mode attentive \
+  --wandb_name $NAME \
+  --device cuda:0 \
+  --accelerator gpu \
+  --gpus "0" \
+  --accumulate_step 1 \
+  --softmax_entropy \
+  --lamb_1 0.5 \
+  --wandb
+'''
+data='bgc'
+batch=80
+name='BGC'
+update=1
+layer=4
+eval_step=1000
+warmup=5
+tau=0.1
+label_cpt='./data/bgc/bgc.taxonomy'
+lr=1e-5
+lamb=0.1
+head=4
+contrast=1
+max_epoch=500
+contrast_mode='attentive'
+device='cuda:0'
+device='cpu'
+accelerator='gpu'
+accelerator='cpu'
+gpus='0'
+accumulate_step=1
+softmax_entropy=True
+lamb_1=0.5
+wandb=False
+model_name_or_path="/Users/guoxing.lan/projects/models/bert-base-uncased"
 
+model_for_debug=AutoModel.from_pretrained(model_name_or_path)
 class Saver:
     def __init__(self, model, optimizer, scheduler, args):
         self.model = model
@@ -39,40 +86,40 @@ class Saver:
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--lr', type=float, default=3e-5, help='Learning rate.')
-parser.add_argument('--data', type=str, default='wos', choices=['wos', 'nyt', 'rcv1', 'bgc', 'patent', 'aapd'], help='Dataset.')
+parser.add_argument('--lr', type=float, default=lr, help='Learning rate.')
+parser.add_argument('--data', type=str, default=data, choices=['wos', 'nyt', 'rcv1', 'bgc', 'patent', 'aapd'], help='Dataset.')
 parser.add_argument('--label_cpt', type=str, default='data/nyt/nyt.taxonomy', help='Label hierarchy file.')
-parser.add_argument('--batch', type=int, default=12, help='Batch size.')
+parser.add_argument('--batch', type=int, default=batch, help='Batch size.')
 parser.add_argument('--early-stop', type=int, default=6, help='Epoch before early stop.')
-parser.add_argument('--device', type=str, default='cuda')
-parser.add_argument('--name', type=str, required=True, help='A name for different runs.')
-parser.add_argument('--update', type=int, default=1, help='Gradient accumulate steps')
-parser.add_argument('--warmup', default=2000, type=int, help='Warmup steps.')
-parser.add_argument('--contrast', default=1, type=int, help='Whether use contrastive model.')
-parser.add_argument('--contrast_mode', default='attentive', type=str, choices=['label_aware', 'fusion', 'attentive', 'simple_contrastive', 'straight_through'], help='Contrastive model type.')
+parser.add_argument('--device', type=str, default=device)
+parser.add_argument('--name', type=str, default=name, help='A name for different runs.')
+parser.add_argument('--update', type=int, default=update, help='Gradient accumulate steps')
+parser.add_argument('--warmup', default=warmup, type=int, help='Warmup steps.')
+parser.add_argument('--contrast', default=contrast, type=int, help='Whether use contrastive model.')
+parser.add_argument('--contrast_mode', default=contrast_mode, type=str, choices=['label_aware', 'fusion', 'attentive', 'simple_contrastive', 'straight_through'], help='Contrastive model type.')
 parser.add_argument('--graph', default=1, type=int, help='Whether use graph encoder.')
-parser.add_argument('--layer', default=1, type=int, help='Layer of Graphormer.')
+parser.add_argument('--layer', default=layer, type=int, help='Layer of Graphormer.')
 parser.add_argument('--multi', default=True, action='store_false', help='Whether the task is multi-label classification.')
-parser.add_argument('--lamb', default=1, type=float, help='lambda')
+parser.add_argument('--lamb', default=lamb, type=float, help='lambda')
 parser.add_argument('--thre', default=0.02, type=float, help='Threshold for keeping tokens. Denote as gamma in the paper.')
-parser.add_argument('--tau', default=1, type=float, help='Temperature for contrastive model.')
+parser.add_argument('--tau', default=tau, type=float, help='Temperature for contrastive model.')
 parser.add_argument('--seed', default=3, type=int, help='Random seed.')
-parser.add_argument('--wandb', default=False, action='store_true', help='Use wandb for logging.')
+parser.add_argument('--wandb', default=wandb, action='store_true', help='Use wandb for logging.')
 parser.add_argument('--tf_board', default=False, action='store_true', help='Use tensorboard for logging.')
-parser.add_argument('--eval_step', default=1000, type=int, help='Evaluation step.')
-parser.add_argument('--head', default=4, type=int, help='Number of heads.')
-parser.add_argument('--max_epoch', default=100, type=int, help='Maximum epoch.')
-parser.add_argument('--wandb_name', default='supContrastiveHMTC', type=str, help='Wandb project name.')
+parser.add_argument('--eval_step', default=eval_step, type=int, help='Evaluation step.')
+parser.add_argument('--head', default=head, type=int, help='Number of heads.')
+parser.add_argument('--max_epoch', default=max_epoch, type=int, help='Maximum epoch.')
+parser.add_argument('--wandb_name', default=name, type=str, help='Wandb project name.')
 parser.add_argument('--checkpoint', default=None, type=str, help='Checkpoint path.')
-parser.add_argument('--accelerator', default='ddp', type=str, help='Accelerator for training.')
-parser.add_argument('--gpus', default='0', type=str, help='GPU for training.')
+parser.add_argument('--accelerator', default=accelerator, type=str, help='Accelerator for training.')
+parser.add_argument('--gpus', default=gpus, type=str, help='GPU for training.')
 parser.add_argument('--test_only', default=False, action='store_true', help='Test only mode.')
 parser.add_argument('--test_checkpoint', default=None, type=str, help='Test checkpoint path.')
-parser.add_argument('--accumulate_step', default=1, type=int, help='Gradient accumulate step.')
+parser.add_argument('--accumulate_step', default=accumulate_step, type=int, help='Gradient accumulate step.')
 parser.add_argument('--decay_epochs', default=0, type=int, help='Decay epochs.')
-parser.add_argument('--softmax_entropy', default=False, action='store_true', help='Use softmax+entropy loss.')
+parser.add_argument('--softmax_entropy', default=softmax_entropy, action='store_true', help='Use softmax+entropy loss.')
 parser.add_argument('--ignore_contrastive', default=False, action='store_true', help='Ignore contrastive loss.')
-parser.add_argument('--lamb_1', default=0.0, type=float, help='Weight for weighted label contrastive loss.')
+parser.add_argument('--lamb_1', default=lamb_1, type=float, help='Weight for weighted label contrastive loss.')
 
 def get_root(path_dict, n):
     ret = []
@@ -113,7 +160,7 @@ if __name__ == '__main__':
     pl.seed_everything(args.seed)
         
     args.name = args.data + '-' + args.name
-    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+    tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
     data_path = os.path.join('data', args.data)
     # This load the pertrained bert model
     # the following code needs to have label_dict, num_class, hiera, r_hiera, label_depth, new_label_dict
@@ -124,72 +171,72 @@ if __name__ == '__main__':
     # load the new label dict
     
         with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:
-            new_label_dict = pickle.load(f)
+            new_id_to_label = pickle.load(f)
 
-        label_dict = new_label_dict
+        id_to_label = new_id_to_label
         # new_label_dict = label_dict
 
-        hiera, _label_dict, r_hiera, label_depth = get_hierarchy_info(os.path.join(data_path, 'nyt.taxonomy'))
-        depths = [len(l.split('/')) - 1 for l in new_label_dict.values()]
+        parent_to_children, label_to_id, child_to_parent, label_depth = get_hierarchy_info(os.path.join(data_path, 'nyt.taxonomy'))
+        depths = [len(l.split('/')) - 1 for l in new_id_to_label.values()]
 
-        num_class = len(label_dict)
+        num_class = len(id_to_label)
 
     elif args.data == 'rcv1':
-        hiera, _label_dict, r_hiera, label_depth = get_hierarchy_info(os.path.join(data_path, 'rcv1.taxonomy'))
+        parent_to_children, label_to_id, child_to_parent, label_depth = get_hierarchy_info(os.path.join(data_path, 'rcv1.taxonomy'))
         with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:
-            label_dict = pickle.load(f)
+            id_to_label = pickle.load(f)
 
-        new_label_dict = label_dict
+        new_id_to_label = id_to_label
 
-        r_hiera = {new_label_dict[_label_dict[k]]: v if (v == 'Root') else new_label_dict[_label_dict[v]] for k, v in r_hiera.items()}
+        child_to_parent = {new_id_to_label[label_to_id[k]]: v if (v == 'Root') else new_id_to_label[label_to_id[v]] for k, v in child_to_parent.items()}
 
         # {label_name: label_id}
-        label_dict = {v: k for k, v in _label_dict.items()}
-        num_class = len(label_dict)
+        id_to_label = {v: k for k, v in label_to_id.items()}
+        num_class = len(id_to_label)
         
         # rcv_label_map = pd.read_csv(os.path.join(data_path, 'rcv1_v2_topics_desc.csv'))
         # rcv_label_amp = dict(zip(rcv_label_map['topic_code'], rcv_label_map['topic_name']))
 
         # new_label_dict = {k: rcv_label_amp[v] for k, v in label_dict.items()}
-        depths = [label_depth[name] for id, name in label_dict.items()]
+        depths = [label_depth[name] for id, name in id_to_label.items()]
 
     elif args.data == 'bgc':
-        hiera, _label_dict, r_hiera, label_depth = get_hierarchy_info(os.path.join(data_path, 'bgc.taxonomy'))
-        label_dict = {v: k for k, v in _label_dict.items()}
-        new_label_dict = label_dict
-        num_class = len(label_dict)
+        parent_to_children, label_to_id, child_to_parent, label_depth = get_hierarchy_info(os.path.join(data_path, 'bgc.taxonomy'))
+        id_to_label = {v: k for k, v in label_to_id.items()}
+        new_id_to_label = id_to_label
+        num_class = len(id_to_label)
         depths = list(label_depth.values())
     elif args.data == 'patent':
-        hiera, _label_dict, r_hiera, label_depth = get_hierarchy_info(os.path.join(data_path, 'patent.taxonomy'))
+        parent_to_children, label_to_id, child_to_parent, label_depth = get_hierarchy_info(os.path.join(data_path, 'patent.taxonomy'))
         with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:
-            label_dict = pickle.load(f)
-        label_dict = {v: k for k, v in _label_dict.items()}
-        new_label_dict = label_dict
+            id_to_label = pickle.load(f)
+        id_to_label = {v: k for k, v in label_to_id.items()}
+        new_id_to_label = id_to_label
 
-        num_class = len(label_dict)
+        num_class = len(id_to_label)
         depths = list(label_depth.values())
     elif args.data == 'aapd':
-        hiera, _label_dict, r_hiera, label_depth = get_hierarchy_info(os.path.join(data_path, 'aapd.taxonomy'))
+        parent_to_children, label_to_id, child_to_parent, label_depth = get_hierarchy_info(os.path.join(data_path, 'aapd.taxonomy'))
         with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:
-            label_dict = pickle.load(f)
-        label_dict = {v: k for k, v in label_dict.items()}
-        new_label_dict = label_dict
-        num_class = len(label_dict)
-        depths = [label_depth[name] for id, name in label_dict.items()]
+            id_to_label = pickle.load(f)
+        id_to_label = {v: k for k, v in id_to_label.items()}
+        new_id_to_label = id_to_label
+        num_class = len(id_to_label)
+        depths = [label_depth[name] for id, name in id_to_label.items()]
     elif args.data == 'wos':
-        hiera, _label_dict, r_hiera, label_depth = get_hierarchy_info(os.path.join(data_path, 'wos.taxonomy'))
+        parent_to_children, label_to_id, child_to_parent, label_depth = get_hierarchy_info(os.path.join(data_path, 'wos.taxonomy'))
         with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:
-            label_dict = pickle.load(f)
-        label_dict = {v: k for k, v in label_dict.items()}
-        new_label_dict = label_dict
-        num_class = len(label_dict)
-        depths = [label_depth[name] for id, name in label_dict.items()]
+            id_to_label = pickle.load(f)
+        id_to_label = {v: k for k, v in id_to_label.items()}
+        new_id_to_label = id_to_label
+        num_class = len(id_to_label)
+        depths = [label_depth[name] for id, name in id_to_label.items()]
         
     if not os.path.exists(os.path.join('checkpoints', args.name)):
         os.makedirs(os.path.join('checkpoints', args.name))
     # store the label_dict as a json file
-    with open(os.path.join('checkpoints', args.name, 'label_dict.json'), 'w') as f:
-        json.dump(label_dict, f)
+    with open(os.path.join('checkpoints', args.name, 'id_to_label.json'), 'w') as f:
+        json.dump(id_to_label, f)
 
     def get_path(label):
         path = []
@@ -203,19 +250,19 @@ if __name__ == '__main__':
         else:
             while label != 'Root':
                 path.insert(0, label)
-                label = r_hiera[label]
+                label = child_to_parent[label]
         return path
     
     if ('nyt' in data_path) or ('aapd' in data_path) or ('wos' in data_path):
-        print(label_dict)
-        label_path = {v: get_path(v) for k, v in label_dict.items()}
+        print(id_to_label)
+        label_path = {v: get_path(v) for k, v in id_to_label.items()}
     elif ('rcv' in data_path):
-        print(_label_dict)
-        label_path = {k: get_path(k) for k, v in _label_dict.items()}
+        print(label_to_id)
+        label_path = {k: get_path(k) for k, v in label_to_id.items()}
     elif ('bgc' in data_path):
-        label_path = {k: get_path(k) for k, v in _label_dict.items()}
+        label_path = {k: get_path(k) for k, v in label_to_id.items()}
     else:
-        label_path = {k: get_path(k) for k, v in label_dict.items()}
+        label_path = {k: get_path(k) for k, v in id_to_label.items()}
 
     args.depths = depths
     args.label_path = label_path
@@ -245,9 +292,9 @@ if __name__ == '__main__':
             # delete the input_ids files
             os.remove(os.path.join(args.save_path, 'input_ids.pkl'))
 
-        data_module = DInterface(args=args, tokenizer=tokenizer, label_depths=depths, device=device, data_path=data_path, id_to_label=label_dict)
-        model = MInterface.load_from_checkpoint(checkpoint_model_path, args=args, num_labels=num_class, label_depths=depths, device=device, data_path=data_path, label_dict=label_dict,
-                                                new_label_dict=new_label_dict, r_hiera=r_hiera)
+        data_module = DInterface(args=args, tokenizer=tokenizer, label_depths=depths, device=device, data_path=data_path, id_to_label=id_to_label)
+        model = MInterface.load_from_checkpoint(checkpoint_model_path, args=args, num_labels=num_class, label_depths=depths, device=device, data_path=data_path, label_dict=id_to_label,
+                                                new_label_dict=new_id_to_label, r_hiera=child_to_parent)
 
         trainer = Trainer(accelerator=args.accelerator, strategy='auto')
         trainer.test(model, datamodule=data_module)
@@ -255,11 +302,12 @@ if __name__ == '__main__':
         import sys
         sys.exit(1)
 
-    data_module = DInterface(args=args, tokenizer=tokenizer, label_depths=depths, device=device, data_path=data_path, id_to_label=label_dict)
+    data_module = DInterface(args=args, tokenizer=tokenizer, label_depths=depths, device=device, data_path=data_path, id_to_label=id_to_label)
 
 
     if args.test_checkpoint is None:
-        model = MInterface(args, num_labels=num_class, label_depths=depths, device=device, data_path=data_path, label_dict=label_dict, new_label_dict=new_label_dict, r_hiera=r_hiera)
+        args.model_name_or_path=model_name_or_path
+        model = MInterface(args, num_labels=num_class, label_depths=depths, device=device, data_path=data_path, label_dict=id_to_label, new_label_dict=new_id_to_label, r_hiera=child_to_parent)
         args.save_path = os.path.join('checkpoints', args.name + '_save/')
         
     else:
@@ -267,8 +315,8 @@ if __name__ == '__main__':
         args.save_path = checkpoint_model_path + '_save/'
 
 
-        model = MInterface.load_from_checkpoint(checkpoint_model_path, args=args, num_labels=num_class, label_depths=depths, device=device, data_path=data_path, label_dict=label_dict,
-                                                new_label_dict=new_label_dict, r_hiera=r_hiera)
+        model = MInterface.load_from_checkpoint(checkpoint_model_path, args=args, num_labels=num_class, label_depths=depths, device=device, data_path=data_path, label_dict=id_to_label,
+                                                new_label_dict=new_id_to_label, r_hiera=child_to_parent)
     # This load the contrastive and classification model
     # model = ContrastModel.from_pretrained('bert-base-uncased', args.batch, num_labels=num_class,
     #                                       contrast_loss=args.contrast, contrast_mode= args.contrast_mode,
@@ -338,7 +386,7 @@ if __name__ == '__main__':
                 #     break
         pbar.close()
 
-        scores = evaluate(pred, truth, label_dict)
+        scores = evaluate(pred, truth, id_to_label)
         macro_f1 = scores['macro_f1']
         micro_f1 = scores['micro_f1']
 
@@ -418,7 +466,7 @@ if __name__ == '__main__':
                 
                 # get index for 1
                 index = torch.nonzero(label[i], as_tuple=True)
-                raw_label = [label_dict[v.item()] for v in index[0]]
+                raw_label = [id_to_label[v.item()] for v in index[0]]
 
                 # detach the raw_data, raw_label, and attention weight
                 # check the device for raw_data and raw_label
@@ -488,7 +536,7 @@ if __name__ == '__main__':
                         #     break
                 pbar.close()
 
-                scores = evaluate(pred, truth, label_dict)
+                scores = evaluate(pred, truth, id_to_label)
                 macro_f1 = scores['macro_f1']
                 micro_f1 = scores['micro_f1']
 
@@ -542,7 +590,7 @@ if __name__ == '__main__':
                     pred.append(torch.sigmoid(l).tolist())
                 eval_ct += 1
         pbar.close()
-        scores = evaluate(pred, truth, label_dict)
+        scores = evaluate(pred, truth, id_to_label)
 
         macro_f1 = scores['macro_f1']
         micro_f1 = scores['micro_f1']
@@ -566,13 +614,13 @@ if __name__ == '__main__':
             best_score_macro = macro_f1
             save(macro_f1, best_score_macro, os.path.join('checkpoints', args.name, 'checkpoint_best_macro.pt'))
             early_stop_count = 0
-            save_results(pred, truth, scores, new_label_dict, dev_raw_data, epoch, os.path.join('checkpoints', args.name, 'results_best_macro.json'))
+            save_results(pred, truth, scores, new_id_to_label, dev_raw_data, epoch, os.path.join('checkpoints', args.name, 'results_best_macro.json'))
 
         if micro_f1 > best_score_micro:
             best_score_micro = micro_f1
             save(micro_f1, best_score_micro, os.path.join('checkpoints', args.name, 'checkpoint_best_micro.pt'))
             early_stop_count = 0
-            save_results(pred, truth, scores, new_label_dict, dev_raw_data, epoch, os.path.join('checkpoints', args.name, 'results_best_micro.json'))
+            save_results(pred, truth, scores, new_id_to_label, dev_raw_data, epoch, os.path.join('checkpoints', args.name, 'results_best_micro.json'))
 
         # save(macro_f1, best_score, os.path.join('checkpoints', args.name, 'checkpoint_{:d}.pt'.format(epoch)))
         # save(micro_f1, best_score_micro, os.path.join('checkpoints', args.name, 'checkpoint_last.pt'))

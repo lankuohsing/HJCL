@@ -23,7 +23,8 @@ class MInterface(pl.LightningModule):
         super().__init__()
         self.args = args
         self.num_labels = num_labels
-        self.model_name = "bert-base-uncased"
+        # self.model_name = "bert-base-uncased"
+        self.model_name=args.model_name_or_path
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
         self.label_dict = label_dict
         self.contrast_loss = args.contrast
@@ -32,14 +33,15 @@ class MInterface(pl.LightningModule):
         self.new_label_dict = new_label_dict
         self.r_hiera = r_hiera
         self.model = ContrastModel.from_pretrained(self.model_name, args.batch, num_labels=num_labels,
-                                          contrast_loss=args.contrast, contrast_mode= args.contrast_mode,
-                                          graph=args.graph, label_depths=label_depths, device=device,
-                                          layer=args.layer, data_path=data_path, multi_label=args.multi,
-                                          lamb=args.lamb, threshold=args.thre, tau=args.tau, head=args.head,
-                                          label_cpt=args.label_cpt, softmax_entropy=args.softmax_entropy,
-                                          do_weighted_label_contrastive=args.do_weighted_label_contrastive, lamb_1=args.lamb_1,
-                                          new_label_dict=self.new_label_dict,
-                                          hamming_dist_mode=args.hamming_dist_mode)
+                                                      contrast_loss=args.contrast, contrast_mode= args.contrast_mode,
+                                                      graph=args.graph, label_depths=label_depths, device=device,
+                                                      layer=args.layer, data_path=data_path, multi_label=args.multi,
+                                                      lamb=args.lamb, threshold=args.thre, tau=args.tau, head=args.head,
+                                                      label_cpt=args.label_cpt, softmax_entropy=args.softmax_entropy,
+                                                      do_weighted_label_contrastive=args.do_weighted_label_contrastive, lamb_1=args.lamb_1,
+                                                      new_label_dict=self.new_label_dict,
+                                                      hamming_dist_mode=args.hamming_dist_mode,
+                                                      model_name_or_path=args.model_name_or_path)
 
         
         if args.contrast_mode == 'simple_contrastive':
