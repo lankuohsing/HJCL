@@ -16,32 +16,32 @@ from .optim import Adam, ScheduledOptim
 from .eval import evaluate, evaluate_by_level
 import os
 import pickle 
-
+import json
 # TODO check how the device is passed
 class MInterface(pl.LightningModule):
-    def __init__(self, args, num_labels, label_depths, device, data_path, label_dict, new_label_dict, r_hiera):
+    def __init__(self, args, num_labels, label_depths, device, data_path, id_to_label, new_id_to_label, child_to_parent):
         super().__init__()
         self.args = args
-        self.num_labels = num_labels
+        self.num_labels = num_labels#bgc: 146
         # self.model_name = "bert-base-uncased"
         self.model_name=args.model_name_or_path
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-        self.label_dict = label_dict
-        self.contrast_loss = args.contrast
+        self.id_to_label = id_to_label
+        self.contrast_loss = args.contrast#bgc: 1; Whether use contrastive model.
         self.lamb = args.lamb
-        self.ignore_contrastive = args.ignore_contrastive
-        self.new_label_dict = new_label_dict
-        self.r_hiera = r_hiera
+        self.ignore_contrastive = args.ignore_contrastive# bgc: false
+        self.new_id_to_label = new_id_to_label
+        self.child_to_parent = child_to_parent
         self.model = ContrastModel.from_pretrained(self.model_name, args.batch, num_labels=num_labels,
-                                                      contrast_loss=args.contrast, contrast_mode= args.contrast_mode,
-                                                      graph=args.graph, label_depths=label_depths, device=device,
-                                                      layer=args.layer, data_path=data_path, multi_label=args.multi,
-                                                      lamb=args.lamb, threshold=args.thre, tau=args.tau, head=args.head,
-                                                      label_cpt=args.label_cpt, softmax_entropy=args.softmax_entropy,
-                                                      do_weighted_label_contrastive=args.do_weighted_label_contrastive, lamb_1=args.lamb_1,
-                                                      new_label_dict=self.new_label_dict,
-                                                      hamming_dist_mode=args.hamming_dist_mode,
-                                                      model_name_or_path=args.model_name_or_path)
+                                                   contrast_loss=args.contrast, contrast_mode= args.contrast_mode,
+                                                   graph=args.graph, label_depths=label_depths, device=device,
+                                                   layer=args.layer, data_path=data_path, multi_label=args.multi,
+                                                   lamb=args.lamb, threshold=args.thre, tau=args.tau, head=args.head,
+                                                   label_cpt=args.label_cpt, softmax_entropy=args.softmax_entropy,
+                                                   do_weighted_label_contrastive=args.do_weighted_label_contrastive, lamb_1=args.lamb_1,
+                                                   new_id_to_label=self.new_id_to_label,
+                                                   hamming_dist_mode=args.hamming_dist_mode,
+                                                   model_name_or_path=args.model_name_or_path)
 
         
         if args.contrast_mode == 'simple_contrastive':
@@ -187,7 +187,10 @@ class MInterface(pl.LightningModule):
         return loss
 
     def on_validation_epoch_end(self) -> None:
-        scores = evaluate(self.validation_step_preds, self.validation_step_truth, self.label_dict, self.new_label_dict, self.r_hiera, threshold=self.threshold)
+        scores = evaluate(self.validation_step_preds, self.validation_step_truth, self.id_to_label, self.new_id_to_label, self.child_to_parent, threshold=self.threshold)
+        print(f'''
+on_validation_epoch_end-val_scores: {json.dumps(scores,ensure_ascii=False)}
+''')
         macro_f1 = scores['macro_f1']
         micro_f1 = scores['micro_f1']
 
@@ -210,7 +213,10 @@ class MInterface(pl.LightningModule):
         self.validation_step_truth.clear()
 
 
-        scores = evaluate(self.test_step_preds, self.test_step_truth, self.label_dict, self.new_label_dict, self.r_hiera, threshold=self.threshold)
+        scores = evaluate(self.test_step_preds, self.test_step_truth, self.id_to_label, self.new_id_to_label, self.child_to_parent, threshold=self.threshold)
+        print(f'''
+on_validation_epoch_end-test_scores: {json.dumps(scores, ensure_ascii=False)}
+''')
         macro_f1 = scores['macro_f1']
         micro_f1 = scores['micro_f1']
 
@@ -281,9 +287,11 @@ class MInterface(pl.LightningModule):
             #     input_ids.append(out['input_ids'].detach().cpu().numpy())
             #     labels.append(out['label'].detach().cpu().numpy())
                 
-        scores = evaluate(test_step_preds, test_step_truth, self.label_dict, self.new_label_dict, self.r_hiera, threshold=self.threshold)
+        scores = evaluate(test_step_preds, test_step_truth, self.id_to_label, self.new_id_to_label, self.child_to_parent, threshold=self.threshold)
         # depth_scores = evaluate_by_level(test_step_preds, test_step_truth, self.label_dict, self.new_label_dict, self.r_hiera, threshold=self.threshold, depths=self.args.depths)
-
+        print(f'''
+on_test_epoch_end-test_scores: {json.dumps(scores, ensure_ascii=False)}
+''')
         macro_f1 = scores['macro_f1']
         micro_f1 = scores['micro_f1']
 
@@ -330,7 +338,7 @@ class MInterface(pl.LightningModule):
             pickle.dump(test_step_truth, f)
 
         with open(os.path.join(self.args.save_path, 'label_dict.pkl'), 'wb') as f:
-            pickle.dump(self.label_dict, f)
+            pickle.dump(self.id_to_label, f)
         # with open(os.path.join(self.args.save_path, 'depth_scores.pkl'), 'wb') as f:
         #     pickle.dump(depth_scores, f)
     

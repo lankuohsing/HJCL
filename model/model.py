@@ -33,7 +33,7 @@ def multilabel_categorical_crossentropy(y_true, y_pred):
 # TODO refine the shape
 class MultiAttBlock(nn.Module):
     def __init__(self, embed_dim,
-                 num_heads,
+                 num_heads,#default 4
                  qdim=None,
                  kdim=None,
                  dropout=0.3,
@@ -45,9 +45,9 @@ class MultiAttBlock(nn.Module):
         self.head_dim = embed_dim // num_heads
         self.embed_dim = embed_dim
 
-        self.q_embed_size = qdim if qdim else embed_dim
-        self.k_embed_size = kdim if kdim else embed_dim
-        self.v_embed_size = kdim if kdim else embed_dim
+        self.q_embed_size = qdim if qdim else embed_dim# 768
+        self.k_embed_size = kdim if kdim else embed_dim# 768
+        self.v_embed_size = kdim if kdim else embed_dim# 768
         self.dropout = dropout
         self.head_scale = self.head_dim ** -0.5
 
@@ -475,13 +475,13 @@ class ContrastModel(BertPreTrainedModel):
     def __init__(self, config, batch_size=1, cls_loss=True, contrast_loss=True, contrast_mode='label_aware', graph=False, layer=1, data_path=None,
                  multi_label=False, lamb=1, lamb_1=0.1, threshold=0.01, tau=1, device="cuda", head=4, label_cpt=None, label_depths=None, label_dict=None, label_aware_embedding=None,
                  is_decoder=False, softmax_entropy=False, add_reg=True, add_count=False, count_weight=0, do_simple_label_contrastive=False, do_weighted_label_contrastive=False,
-                 new_label_dict=None, add_path_reg=False, path_reg_weight=0, path_reg_weight_adjusted=False, ignore_path_reg=False, hamming_dist_mode=None,model_name_or_path='bert-base-uncased'):
+                 new_id_to_label=None, add_path_reg=False, path_reg_weight=0, path_reg_weight_adjusted=False, ignore_path_reg=False, hamming_dist_mode=None, model_name_or_path='bert-base-uncased'):
         super(ContrastModel, self).__init__(config)
         self.num_labels = config.num_labels
         self.tokenizer = AutoTokenizer.from_pretrained(model_name_or_path)
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.is_decoder = is_decoder
-        self.softmax_entropy = softmax_entropy
+        self.softmax_entropy = softmax_entropy# bgc: true;
         
         # TODO modify the classifier for flat multi label or sequence multi label
         if 'patent' not in data_path:
@@ -515,7 +515,7 @@ class ContrastModel(BertPreTrainedModel):
 
         self.cls_loss = cls_loss
         self.contrast_loss = contrast_loss
-        self.contrast_mode = contrast_mode
+        self.contrast_mode = contrast_mode#bgc: attentive
 
         if self.contrast_mode == 'straight_through':
             self.straight_fc = nn.Linear(config.hidden_size, config.hidden_size, bias=True)
@@ -526,22 +526,23 @@ class ContrastModel(BertPreTrainedModel):
 
         self.add_reg = add_reg
 
-        self.graph_encoder = GraphEncoder(config, graph, layer=layer, data_path=data_path, threshold=threshold, tau=tau, label_dict=new_label_dict)
+        self.graph_encoder = GraphEncoder(config, graph, layer=layer, data_path=data_path, threshold=threshold, tau=tau, id_to_label=new_id_to_label, model_name_or_path=model_name_or_path)
         # self.decoder = Decoder(config.hidden_size, graph, label_cpt=label_cpt, tau=tau)
         # self.decoder = Decoder_GRU(config.hidden_size, label_cpt=label_cpt, enc_hidden_size=config.hidden_size * 2, dec_hidden_size=config.hidden_size)
-        hiera, _label_dict, r_hiera, label_depth = get_hierarchy_info(label_cpt)
+        # parent_to_children, label_to_id, child_to_parent, label_depth
+        parent_to_children, label_to_id, child_to_parent, label_depth = get_hierarchy_info(label_cpt)
         # data_path = '/'.join(data_path.split('/')[:-1])
-
+        # parent_to_children, label_to_id, child_to_parent, label_depth
         if not 'bgc' in data_path:
             with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:
                 label_dict = pickle.load(f)
         else:
-            label_dict = new_label_dict
+            label_dict = new_id_to_label
 
         if ('nyt' in data_path):
             label_depth = [label_depth[v] for k, v in label_dict.items()]
         elif ('rcv' in data_path) or ('bgc' in data_path):
-            label_depth = [label_depth[k] for k, v in _label_dict.items()]
+            label_depth = [label_depth[k] for k, v in label_to_id.items()]
         else:
             label_depth = [label_depth[k] for k, v in label_dict.items()]
         label_depth = np.array(label_depth, dtype=np.int32)
@@ -549,10 +550,10 @@ class ContrastModel(BertPreTrainedModel):
         self.supcon = SupConLoss(temperature=tau, base_temperature=tau, device=device)
         self.data_path = data_path
 
-        self.hiera = hiera
-        self.r_hiera = r_hiera
+        self.hiera = parent_to_children
+        self.r_hiera = child_to_parent
         self.label_depth = label_depth
-        # self.hamming_dist = self.compute_hamming_dist(label_dict, r_hiera)
+        # self.hamming_dist = self.compute_hamming_dist(label_dict, child_to_parent)
         self.label_dict = label_dict
         self.r_label_dict = {v: k for k, v in label_dict.items()}
         # self.decoder = Decoder_GRU(config.hidden_size, label_cpt=label_cpt, enc_hidden_size=config.hidden_size * 2, dec_hidden_size=config.hidden_size)
@@ -584,9 +585,9 @@ class ContrastModel(BertPreTrainedModel):
         if ('nyt' in data_path):
             self.label_path = {k: self.get_path(v) for k, v in label_dict.items()}
         elif ('rcv' in data_path):
-            self.label_path = {k: self.get_path(k) for k, v in _label_dict.items()}
+            self.label_path = {k: self.get_path(k) for k, v in label_to_id.items()}
         elif ('bgc' in data_path):
-            self.label_path = {v: self.get_path(k) for k, v in _label_dict.items()}
+            self.label_path = {v: self.get_path(k) for k, v in label_to_id.items()}
         else:
             self.label_path = {v: self.get_path(k) for k, v in label_dict.items()}
         # self.label_path = {k: self.get_path(v) for k, v in label_dict.items()}

@@ -259,7 +259,7 @@ if __name__ == '__main__':
 
 
     if args.test_checkpoint is None:
-        model = MInterface(args, num_labels=num_class, label_depths=depths, device=device, data_path=data_path, label_dict=label_dict, new_label_dict=new_label_dict, r_hiera=r_hiera)
+        model = MInterface(args, num_labels=num_class, label_depths=depths, device=device, data_path=data_path, id_to_label=label_dict, new_id_to_label=new_label_dict, child_to_parent=r_hiera)
         args.save_path = os.path.join('checkpoints', args.name + '_save/')
         
     else:

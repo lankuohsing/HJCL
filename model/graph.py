@@ -254,7 +254,7 @@ class GraphLayer(nn.Module):
 
 
 class GraphEncoder(nn.Module):
-    def __init__(self, config, graph=False, layer=1, data_path=None, threshold=0.01, tau=1, label_dict=None, model_name_or_path='bert-base-uncased'):
+    def __init__(self, config, graph=False, layer=1, data_path=None, threshold=0.01, tau=1, id_to_label=None, model_name_or_path='bert-base-uncased'):
         super(GraphEncoder, self).__init__()
         self.config = config
         self.tau = tau
@@ -263,31 +263,31 @@ class GraphEncoder(nn.Module):
 
         if 'rcv' in data_path:
             with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:
-                self.label_dict = pickle.load(f)
+                self.id_to_label = pickle.load(f)
         elif 'bgc' in data_path:
-            self.label_dict = label_dict
+            self.id_to_label = id_to_label
         elif 'patent' in data_path:
             with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:
-                self.label_dict = pickle.load(f)
-            self.label_dict = {v: k for k, v in self.label_dict.items()}
+                self.id_to_label = pickle.load(f)
+            self.id_to_label = {v: k for k, v in self.id_to_label.items()}
         elif 'aapd' in data_path:
             with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:
-                self.label_dict = pickle.load(f)
+                self.id_to_label = pickle.load(f)
             # self.label_dict = {v: k for k, v in self.label_dict.items()}
             with open(os.path.join(data_path, 'label_mapping.json'), 'r') as f:
                 label_mapping = json.load(f)
-            self.label_dict = {k: label_mapping[v] for k, v in label_dict.items()}
+            self.id_to_label = {k: label_mapping[v] for k, v in id_to_label.items()}
         elif 'wos' in data_path:
             with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:
-                self.label_dict = pickle.load(f)
-            self.label_dict = {v: k for k, v in self.label_dict.items()}
+                self.id_to_label = pickle.load(f)
+            self.id_to_label = {v: k for k, v in self.id_to_label.items()}
         else:
-            self.label_dict = torch.load(os.path.join(data_path, 'bert_value_dict.pt'))
-            self.label_dict = {i: self.tokenizer.decode(v) for i, v in self.label_dict.items()}
+            self.id_to_label = torch.load(os.path.join(data_path, 'bert_value_dict.pt'))
+            self.id_to_label = {i: self.tokenizer.decode(v) for i, v in self.id_to_label.items()}
 
         self.label_name = []
-        for i in range(len(self.label_dict)):
-            self.label_name.append(self.label_dict[i])
+        for i in range(len(self.id_to_label)):
+            self.label_name.append(self.id_to_label[i])
         
         self.label_name = self.tokenizer(self.label_name, padding='max_length', max_length=config.max_position_embeddings)['input_ids']
         self.label_name = nn.Parameter(torch.tensor(self.label_name, dtype=torch.long), requires_grad=False)

@@ -43,7 +43,7 @@ CUDA_VISIBLE_DEVICES=0 python train.py \
   --wandb
 '''
 data='bgc'
-batch=80
+batch=4
 name='BGC'
 update=1
 layer=4
@@ -55,7 +55,7 @@ lr=1e-5
 lamb=0.1
 head=4
 contrast=1
-max_epoch=500
+max_epoch=4
 contrast_mode='attentive'
 device='cuda:0'
 device='cpu'
@@ -88,7 +88,7 @@ class Saver:
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr', type=float, default=lr, help='Learning rate.')
 parser.add_argument('--data', type=str, default=data, choices=['wos', 'nyt', 'rcv1', 'bgc', 'patent', 'aapd'], help='Dataset.')
-parser.add_argument('--label_cpt', type=str, default='data/nyt/nyt.taxonomy', help='Label hierarchy file.')
+parser.add_argument('--label_cpt', type=str, default=label_cpt, help='Label hierarchy file.')
 parser.add_argument('--batch', type=int, default=batch, help='Batch size.')
 parser.add_argument('--early-stop', type=int, default=6, help='Epoch before early stop.')
 parser.add_argument('--device', type=str, default=device)
@@ -264,7 +264,7 @@ if __name__ == '__main__':
     else:
         label_path = {k: get_path(k) for k, v in id_to_label.items()}
 
-    args.depths = depths
+    args.depths = depths#按照id_to_label中的顺序，将每个label的深度信息存放在一个list里面
     args.label_path = label_path
 
     # create depths by the number of '/' in the new label dict
@@ -307,7 +307,9 @@ if __name__ == '__main__':
 
     if args.test_checkpoint is None:
         args.model_name_or_path=model_name_or_path
-        model = MInterface(args, num_labels=num_class, label_depths=depths, device=device, data_path=data_path, label_dict=id_to_label, new_label_dict=new_id_to_label, r_hiera=child_to_parent)
+        model = MInterface(args, num_labels=num_class, label_depths=depths,
+                           device=device, data_path=data_path, id_to_label=id_to_label,
+                           new_id_to_label=new_id_to_label, child_to_parent=child_to_parent)
         args.save_path = os.path.join('checkpoints', args.name + '_save/')
         
     else:
@@ -332,7 +334,7 @@ if __name__ == '__main__':
         wandb_logger.watch(model)
 
     checkpoint_callback = ModelCheckpoint(monitor='test/macro_f1', mode='max', save_top_k=1, 
-                                          dirpath=os.path.join('checkpoints', args.name), filename= args.name + '-{epoch}-{val_loss:.2f}', save_on_train_epoch_end=False)
+                                          dirpath=os.path.join('checkpoints', args.name), filename= args.name + '-{epoch}-{val_loss:.2f}', save_on_train_epoch_end=True)
     trainer = Trainer(max_epochs=args.max_epoch, strategy="auto",
                       accelerator=args.accelerator, logger=wandb_logger if args.wandb else None,
                       accumulate_grad_batches=args.accumulate_step, default_root_dir=os.path.join('checkpoints', args.name),

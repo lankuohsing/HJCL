@@ -87,7 +87,7 @@ class BertDataset_rcv(Dataset):
         self.max_token = max_token
         self.pad_idx = pad_idx
         self.is_test = is_test
-        tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
+        tokenizer = AutoTokenizer.from_pretrained("/Users/guoxing.lan/projects/models/bert-base-uncased")
 
         data = []
         labels = []
@@ -115,8 +115,11 @@ class BertDataset_rcv(Dataset):
 
 
                 one_hot = np.zeros(len(label_dict))
-                for label in line[label_key]:
-                    one_hot[label_dict[label]] = 1
+                try:
+                    for label in line[label_key]:
+                        one_hot[label_dict[label]] = 1
+                except Exception as e:
+                    print(f'{e}, label_key: {label_key}; line: {line}')
                 labels.append(one_hot)
                 leaves = get_leaf(line[label_key], label_path)
                 sample2leaf[total - 1] = leaves
