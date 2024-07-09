@@ -126,11 +126,11 @@ def evaluate(epoch_predicts, epoch_labels, id2label, new_label_dict, r_hiera, th
 
     return {'macro_precision': precision_macro,
             'macro_recall': recall_macro,
-        'micro_precision': precision_micro,
+            'micro_precision': precision_micro,
             'micro_recall': recall_micro,
             'micro_f1': micro_f1,
             'macro_f1': macro_f1,
-            # 'full': [precision_dict, recall_dict, fscore_dict, right_count_list, predicted_count_list, gold_count_list],
+            'full': [precision_dict, recall_dict, fscore_dict, right_count_list, predicted_count_list, gold_count_list],
             'right_total': right_total,
             'predict_total': predict_total,
             'gold_total': gold_total,

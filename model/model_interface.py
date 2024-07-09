@@ -286,12 +286,13 @@ on_validation_epoch_end-test_scores: {json.dumps(scores, ensure_ascii=False)}
             #     indices.append(out['idx'])
             #     input_ids.append(out['input_ids'].detach().cpu().numpy())
             #     labels.append(out['label'].detach().cpu().numpy())
-                
+        print(f'''
+on_test_epoch_end: num_of_samples: {len(test_step_preds)}
+''')
         scores = evaluate(test_step_preds, test_step_truth, self.id_to_label, self.new_id_to_label, self.child_to_parent, threshold=self.threshold)
         # depth_scores = evaluate_by_level(test_step_preds, test_step_truth, self.label_dict, self.new_label_dict, self.r_hiera, threshold=self.threshold, depths=self.args.depths)
-        print(f'''
-on_test_epoch_end-test_scores: {json.dumps(scores, ensure_ascii=False)}
-''')
+        with open("test_scores.json",'w',encoding="UTF-8") as wf:
+            json.dump(scores, wf, ensure_ascii=False)
         macro_f1 = scores['macro_f1']
         micro_f1 = scores['micro_f1']
 
