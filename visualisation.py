@@ -177,7 +177,7 @@ if __name__ == '__main__':
         num_class = len(label_dict)
         depths = [label_depth[name] for id, name in label_dict.items()]
     elif args.data == 'wos':
-        hiera, _label_dict, r_hiera, label_depth = get_hierarchy_info(os.path.join(data_path, 'wos.taxonomy'))
+        hiera, _label_dict, r_hiera, label_depth = get_hierarchy_info(os.path.join(data_path, 'bgc.taxonomy'))
         with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:
             label_dict = pickle.load(f)
         label_dict = {v: k for k, v in label_dict.items()}

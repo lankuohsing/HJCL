@@ -1,14 +1,17 @@
 .DS_Store
 .idea/
-
-data/bgc/*
+# data files
+data/bgc*/
+*.json
 output/
 sbatch*
 logs/
 data/nyt/nyt_annotated
 data/nyt/Nytimes/
 data/rcv1/rcv1_v2.csv
-checkpoints/
+
+# model files
+checkpoints*/
 wandb/
 data/nty_backup
 lightning_logs/

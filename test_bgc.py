@@ -225,7 +225,7 @@ if __name__ == '__main__':
         num_class = len(id_to_label)
         depths = [label_depth[name] for id, name in id_to_label.items()]
     elif args.data == 'wos':
-        parent_to_children, label_to_id, child_to_parent, label_depth = get_hierarchy_info(os.path.join(data_path, 'wos.taxonomy'))
+        parent_to_children, label_to_id, child_to_parent, label_depth = get_hierarchy_info(os.path.join(data_path, 'bgc.taxonomy'))
         with open(os.path.join(data_path, 'new_label_dict.pkl'), 'rb') as f:
             id_to_label = pickle.load(f)
         id_to_label = {v: k for k, v in id_to_label.items()}

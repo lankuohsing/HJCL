@@ -188,9 +188,8 @@ class MInterface(pl.LightningModule):
 
     def on_validation_epoch_end(self) -> None:
         scores = evaluate(self.validation_step_preds, self.validation_step_truth, self.id_to_label, self.new_id_to_label, self.child_to_parent, threshold=self.threshold)
-        print(f'''
-on_validation_epoch_end-val_scores: {json.dumps(scores,ensure_ascii=False)}
-''')
+        with open("on_validation_epoch_end_dev_scores.json", 'w', encoding="UTF-8") as wf:
+            json.dump(scores, wf, ensure_ascii=False)
         macro_f1 = scores['macro_f1']
         micro_f1 = scores['micro_f1']
 
@@ -205,6 +204,7 @@ on_validation_epoch_end-val_scores: {json.dumps(scores,ensure_ascii=False)}
         print('right_total', scores['right_total'], 'predict_total', scores['predict_total'], 'gold_total', scores['gold_total'])
         
         # add prefix 'val/' to all keys
+        scores.pop("full")
         scores = {f'val/{k}': v for k, v in scores.items()}
 
         self.log_dict(scores)
@@ -214,9 +214,8 @@ on_validation_epoch_end-val_scores: {json.dumps(scores,ensure_ascii=False)}
 
 
         scores = evaluate(self.test_step_preds, self.test_step_truth, self.id_to_label, self.new_id_to_label, self.child_to_parent, threshold=self.threshold)
-        print(f'''
-on_validation_epoch_end-test_scores: {json.dumps(scores, ensure_ascii=False)}
-''')
+        with open("on_validation_epoch_end_test_scores.json",'w',encoding="UTF-8") as wf:
+            json.dump(scores, wf,ensure_ascii=False)
         macro_f1 = scores['macro_f1']
         micro_f1 = scores['micro_f1']
 
@@ -231,6 +230,7 @@ on_validation_epoch_end-test_scores: {json.dumps(scores, ensure_ascii=False)}
         print('right_total', scores['right_total'], 'predict_total', scores['predict_total'], 'gold_total', scores['gold_total'])
         
         # add prefix 'test/' to all keys
+        scores.pop("full")
         scores = {f'test/{k}': v for k, v in scores.items()}
 
         self.log_dict(scores)
@@ -286,12 +286,10 @@ on_validation_epoch_end-test_scores: {json.dumps(scores, ensure_ascii=False)}
             #     indices.append(out['idx'])
             #     input_ids.append(out['input_ids'].detach().cpu().numpy())
             #     labels.append(out['label'].detach().cpu().numpy())
-        print(f'''
-on_test_epoch_end: num_of_samples: {len(test_step_preds)}
-''')
+
         scores = evaluate(test_step_preds, test_step_truth, self.id_to_label, self.new_id_to_label, self.child_to_parent, threshold=self.threshold)
         # depth_scores = evaluate_by_level(test_step_preds, test_step_truth, self.label_dict, self.new_label_dict, self.r_hiera, threshold=self.threshold, depths=self.args.depths)
-        with open("test_scores.json",'w',encoding="UTF-8") as wf:
+        with open("on_test_epoch_end_test_scores.json",'w',encoding="UTF-8") as wf:
             json.dump(scores, wf, ensure_ascii=False)
         macro_f1 = scores['macro_f1']
         micro_f1 = scores['micro_f1']
@@ -342,7 +340,7 @@ on_test_epoch_end: num_of_samples: {len(test_step_preds)}
             pickle.dump(self.id_to_label, f)
         # with open(os.path.join(self.args.save_path, 'depth_scores.pkl'), 'wb') as f:
         #     pickle.dump(depth_scores, f)
-    
+        scores.pop("full")
         self.log_dict(scores)
         self.test_outputs.clear()
 
